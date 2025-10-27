@@ -1,193 +1,165 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Dimensions,
-} from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import * as Progress from 'react-native-progress'
 
-// Helper: generate days for this month
-function getMonthDays() {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const today = now.getDate()
+export default function Home({ navigation }: any) {
+  // Format today's date
+  const today = new Date()
+  const formattedDate = today.toLocaleDateString('en-NZ', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
-  const arr = []
-  for (let i = 1; i <= daysInMonth; i++) {
-    arr.push({
-      day: i,
-      weekday: new Date(year, month, i).toLocaleDateString('en-US', {
-        weekday: 'short',
-      })[0],
-      done: false, // default false
-      today: i === today,
-    })
-  }
-  return { arr, todayIndex: today - 1 }
-}
+  // Mock habit data
+  const [habits, setHabits] = useState([
+    { id: '1', name: 'Morning stretch', done: true },
+    { id: '2', name: 'Drink 2L of water', done: false },
+    { id: '3', name: 'Read 20 minutes', done: false },
+    { id: '4', name: 'Meditate 10 mins', done: true },
+    { id: '5', name: 'Go for a walk', done: false },
+    { id: '6', name: 'Eat healthy lunch', done: false },
+  ])
 
-// Mock habits for now
-const mockHabits = [
-  { id: '1', name: 'sleep 8hrs' },
-  { id: '2', name: 'meditate' },
-  { id: '3', name: 'exercise' },
-]
+  // Calculate progress
+  const total = habits.length
+  const completed = habits.filter(h => h.done).length
+  const progress = total > 0 ? completed / total : 0
 
-const Home = () => {
-  const { arr: baseMonthDays, todayIndex } = useMemo(() => getMonthDays(), [])
-  const [habits, setHabits] = useState(() =>
-    mockHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
+  // Random motivational message
+  const messages = [
+    "Let's make today count",
+    "Small steps every day lead to big change",
+    "Consistency beats intensity",
+    "You’re doing amazing — keep it up!",
+    "Discipline is choosing what you want most over what you want now",
+    "A little progress each day adds up to big results",
+  ]
+  const [message, setMessage] = useState('')
+  useEffect(() => {
+    const random = Math.floor(Math.random() * messages.length)
+    setMessage(messages[random])
+  }, [])
+
+  // Render each habit row
+  const renderHabit = ({ item }: any) => (
+    <View style={styles.habitItem}>
+      <Ionicons
+        name={item.done ? 'checkmark-circle' : 'ellipse-outline'}
+        size={22}
+        color={item.done ? '#4F8EF7' : '#aaa'}
+      />
+      <Text style={styles.habitText}>{item.name}</Text>
+    </View>
   )
 
-  const flatListRefs = useRef<FlatList[]>([])
-
-  // Scroll each habit's FlatList to today's index on mount
-  useEffect(() => {
-    flatListRefs.current.forEach(ref => {
-      ref?.scrollToIndex({
-        index: todayIndex > 1 ? todayIndex - 1 : 0,
-        animated: false,
-      })
-    })
-  }, [todayIndex])
-
-  // Toggle selected day (done/not done)
-  const toggleDay = (habitId: string, dayNumber: number) => {
-    setHabits(prev =>
-      prev.map(habit => {
-        if (habit.id === habitId) {
-          const updatedDays = habit.days.map((d: { day: number; done: any }) =>
-            d.day === dayNumber ? { ...d, done: !d.done } : d
-          )
-          return { ...habit, days: updatedDays }
-        }
-        return habit
-      })
-    )
-  }
-
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+      {/* Header */}
+      <Text style={styles.date}>{formattedDate}</Text>
+      <Text style={styles.greeting}>Welcome back, Irina 👋</Text>
+      <Text style={styles.message}>{message}</Text>
+
+      {/* Progress Section */}
+      <View style={styles.progressSection}>
+        <Progress.Circle
+          size={110}
+          progress={progress}
+          showsText={true}
+          color="#44cfbdff"
+          unfilledColor="#E0E0E0"
+          borderWidth={0}
+          thickness={8}
+          formatText={() => `${Math.round(progress * 100)}%`}
+        />
+        <Text style={styles.summaryText}>
+          {completed} / {total} habits completed
+        </Text>
+      </View>
+
+      {/* Habit list */}
+      <Text style={styles.sectionTitle}>Today's Habits</Text>
       <FlatList
         data={habits}
-        keyExtractor={item => item.id}
-        renderItem={({ item, index }) => (
-          <View style={styles.habitBlock}>
-            <Text style={styles.habitName}>{item.name}</Text>
-            <Text style={styles.monthLabel}>
-              {new Date().toLocaleString('default', { month: 'short' })}
-            </Text>
-
-            <FlatList
-              ref={el => (flatListRefs.current[index] = el!)}
-              data={item.days}
-              keyExtractor={d => d.day.toString()}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              getItemLayout={(data, idx) => ({
-                length: 50,
-                offset: 50 * idx,
-                index: idx,
-              })}
-              renderItem={({ item: d }) => (
-                <View style={styles.dayColumn}>
-                  <TouchableOpacity
-                    onPress={() => toggleDay(item.id, d.day)}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.circle,
-                        d.done
-                          ? styles.doneCircle
-                          : d.today
-                          ? styles.todayCircle
-                          : styles.defaultCircle,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dayNumber,
-                          d.done
-                            ? { color: '#fff' }
-                            : d.today
-                            ? { color: '#000' }
-                            : { color: '#555' },
-                        ]}
-                      >
-                        {d.day}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <Text style={styles.dayLabel}>{d.weekday}</Text>
-                </View>
-              )}
-            />
-          </View>
-        )}
+        renderItem={renderHabit}
+        keyExtractor={(item) => item.id}
+        scrollEnabled={false}
       />
-    </View>
+
+      {/* Button */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('Tracker')}
+      >
+        <Text style={styles.buttonText}>Go to Tracker</Text>
+      </TouchableOpacity>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    backgroundColor: '#F7F8FA',
   },
-  habitBlock: {
+  scrollContainer: {
+    padding: 24,
+    paddingTop: 80,
+  },
+  date: {
+    fontSize: 20,
+    color: '#666',
+    marginBottom: 4,
+  },
+  greeting: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#4F8EF7',
+  },
+  message: {
+    fontSize: 16,
+    color: '#333',
+    marginTop: 6,
+    marginBottom: 24,
+  },
+  progressSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  summaryText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: '#333',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 12,
+  },
+  habitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  habitText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  button: {
+    backgroundColor: '#4F8EF7',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 28,
     marginBottom: 40,
   },
-  habitName: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-    textTransform: 'lowercase',
-    color: '#000',
-  },
-  monthLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 8,
-    textTransform: 'lowercase',
-  },
-  dayColumn: {
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  defaultCircle: {
-    backgroundColor: '#E5E7EB',
-  },
-  doneCircle: {
-    backgroundColor: '#000',
-  },
-  todayCircle: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 2,
-    borderColor: '#000',
-  },
-  dayNumber: {
-    fontSize: 14,
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
   },
-  dayLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
 })
-
-export default Home
