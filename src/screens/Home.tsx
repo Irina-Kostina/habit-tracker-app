@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react'
+// Importing UI elements from React Native
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native'
+// Icon library for checkmarks and circles
 import { Ionicons } from '@expo/vector-icons'
+// Circular progress component
 import * as Progress from 'react-native-progress'
 
+// Home screen component
 export default function Home({ navigation }: any) {
-  // Format today's date
+  // Get today's date and format it in a readable style
   const today = new Date()
   const formattedDate = today.toLocaleDateString('en-NZ', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    weekday: 'long', // e.g. “Tuesday”
+    day: 'numeric',  // e.g. “28”
+    month: 'long',   // e.g. “October”
+    year: 'numeric', // e.g. “2025”
   })
 
-  // Mock habit data
+  // Mock data for user habits (later will come from storage or API)
+  // Each habit has an ID, name, and a boolean (done or not done)
   const [habits, setHabits] = useState([
     { id: '1', name: 'Morning stretch', done: true },
     { id: '2', name: 'Drink 2L of water', done: false },
@@ -23,55 +28,104 @@ export default function Home({ navigation }: any) {
     { id: '6', name: 'Eat healthy lunch', done: false },
   ])
 
-  // Calculate progress
+  // Calculate daily progress:
+  // Count total habits and completed ones
   const total = habits.length
   const completed = habits.filter(h => h.done).length
+  // Divide completed by total to get progress value (between 0 and 1)
   const progress = total > 0 ? completed / total : 0
 
-  // Random motivational message
+  // Motivational messages array
+  // (Later can be replaced with quotes API or date-based messages)
   const messages = [
-    "Let's make today count",
-    "Small steps every day lead to big change",
-    "Consistency beats intensity",
-    "You’re doing amazing — keep it up!",
-    "Discipline is choosing what you want most over what you want now",
-    "A little progress each day adds up to big results",
+    'Small things become great when done with love.',
+    'Discipline is choosing what you want most over what you want now.',
+    'A little progress each day adds up to big results.',
+    'Start where you are. Use what you have. Do what you can.',
+    'Consistency creates confidence.',
   ]
+
+  // Current message to display on screen
   const [message, setMessage] = useState('')
+
+  // Pick a random motivational quote when screen first loads
   useEffect(() => {
     const random = Math.floor(Math.random() * messages.length)
     setMessage(messages[random])
   }, [])
 
-  // Render each habit row
+  // Renders each habit as a list row
   const renderHabit = ({ item }: any) => (
     <View style={styles.habitItem}>
+      {/* Circle icon changes depending on habit status */}
       <Ionicons
         name={item.done ? 'checkmark-circle' : 'ellipse-outline'}
         size={22}
-        color={item.done ? '#4F8EF7' : '#aaa'}
+        color={item.done ? '#10B981' : '#9CA3AF'} // success green for done, neutral gray otherwise
       />
       <Text style={styles.habitText}>{item.name}</Text>
     </View>
   )
 
+  // Main screen layout
   return (
+    // ScrollView allows vertical scrolling (in case many habits)
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
-      {/* Header */}
+      
+      {/* Header Section */}
       <Text style={styles.date}>{formattedDate}</Text>
-      <Text style={styles.greeting}>Welcome back, Irina 👋</Text>
+      <Text style={styles.greeting}>Welcome back, Irina</Text>
       <Text style={styles.message}>{message}</Text>
+
+      {/* --- NEW: Dashboard-style quick action cards --- */}
+      <View style={styles.grid}>
+        {/* Card 1 — Track Habits */}
+        <TouchableOpacity
+          style={[styles.card, styles.cardBlue]}
+          onPress={() => navigation.navigate('Tracker')}
+        >
+          <Ionicons name="checkmark-circle-outline" size={30} color="#fff" />
+          <Text style={styles.cardTitle}>Track habits</Text>
+          <Text style={styles.cardSubtitle}>View today’s progress</Text>
+        </TouchableOpacity>
+
+        {/* Card 2 — Add New Habit */}
+        <TouchableOpacity
+          style={[styles.card, styles.cardAmber]}
+          onPress={() => navigation.navigate('Add Habit')}
+        >
+          <Ionicons name="add-circle-outline" size={30} color="#1F2937" />
+          <Text style={styles.cardTitleDark}>Add new habit</Text>
+          <Text style={styles.cardSubtitleDark}>Create a new goal</Text>
+          <View style={styles.newBadge}>
+            <Text style={styles.newText}>New</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Card 3 — View Statistics */}
+        <TouchableOpacity
+          style={[styles.card, styles.cardDark]}
+          onPress={() => navigation.navigate('Stats')}
+        >
+          <Ionicons name="bar-chart-outline" size={30} color="#FAFAFA" />
+          <Text style={styles.cardTitleLight}>View stats</Text>
+          <Text style={styles.cardSubtitleLight}>Check your streak</Text>
+        </TouchableOpacity>
+      </View>
+      {/* --- END OF NEW SECTION --- */}
 
       {/* Progress Section */}
       <View style={styles.progressSection}>
+        {/* Circular progress chart showing % of completed habits */}
         <Progress.Circle
-          size={110}
-          progress={progress}
-          showsText={true}
-          color="#44cfbdff"
-          unfilledColor="#E0E0E0"
+          size={110}              // diameter of the circle
+          progress={progress}     // value between 0 and 1
+          showsText={true}        // shows text inside (like “60%”)
+          color="#2563EB"         // main accent blue
+          unfilledColor="#E5E7EB" // light grey background ring
           borderWidth={0}
           thickness={8}
+          // Format text to show as percentage
           formatText={() => `${Math.round(progress * 100)}%`}
         />
         <Text style={styles.summaryText}>
@@ -79,16 +133,16 @@ export default function Home({ navigation }: any) {
         </Text>
       </View>
 
-      {/* Habit list */}
+      {/* Habits list */}
       <Text style={styles.sectionTitle}>Today's Habits</Text>
       <FlatList
-        data={habits}
-        renderItem={renderHabit}
+        data={habits}               // full habit array
+        renderItem={renderHabit}    // function that renders each row
         keyExtractor={(item) => item.id}
-        scrollEnabled={false}
+        scrollEnabled={false}       // disable nested scrolling
       />
 
-      {/* Button */}
+      {/* Navigation button to open the Tracker tab */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('Tracker')}
@@ -99,10 +153,11 @@ export default function Home({ navigation }: any) {
   )
 }
 
+// Styling
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#FAFAFA', // off-white neutral background
   },
   scrollContainer: {
     padding: 24,
@@ -110,20 +165,98 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 20,
-    color: '#666',
+    color: '#6B7280', // neutral gray for date text
     marginBottom: 4,
   },
   greeting: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#4F8EF7',
+    color: '#2563EB', // calming blue for header
   },
   message: {
     fontSize: 16,
-    color: '#333',
-    marginTop: 6,
+    color: '#1F2937', // dark grey for readability
+    marginTop: 8,
     marginBottom: 24,
   },
+
+  /* --- NEW STYLES FOR DASHBOARD CARDS --- */
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  card: {
+    width: '47%',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  cardBlue: {
+    backgroundColor: '#2563EB', // blue for tracking
+  },
+  cardAmber: {
+    backgroundColor: '#FCD34D', // soft amber for adding new habit
+    position: 'relative',
+  },
+  cardDark: {
+    backgroundColor: '#1F2937', // dark gray for stats
+  },
+  cardTitle: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#E5E7EB',
+    marginTop: 4,
+  },
+  cardTitleDark: {
+    fontSize: 18,
+    color: '#1F2937',
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  cardSubtitleDark: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginTop: 4,
+  },
+  cardTitleLight: {
+    fontSize: 18,
+    color: '#FAFAFA',
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  cardSubtitleLight: {
+    fontSize: 14,
+    color: '#D1D5DB',
+    marginTop: 4,
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  newText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  /* --- END NEW STYLES --- */
+
   progressSection: {
     alignItems: 'center',
     marginBottom: 24,
@@ -131,12 +264,12 @@ const styles = StyleSheet.create({
   summaryText: {
     marginTop: 8,
     fontSize: 16,
-    color: '#333',
+    color: '#1F2937',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#222',
+    color: '#F59E0B', // amber accent for section title
     marginBottom: 12,
   },
   habitItem: {
@@ -147,10 +280,10 @@ const styles = StyleSheet.create({
   habitText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#333',
+    color: '#1F2937', // dark gray for main text
   },
   button: {
-    backgroundColor: '#4F8EF7',
+    backgroundColor: '#2563EB', // primary blue button
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

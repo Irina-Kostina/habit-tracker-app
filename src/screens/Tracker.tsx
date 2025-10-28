@@ -5,10 +5,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
-// Helper: generate days for this month
+// Helper: generate all days of this month
 function getMonthDays() {
   const now = new Date()
   const year = now.getFullYear()
@@ -23,7 +23,7 @@ function getMonthDays() {
       weekday: new Date(year, month, i).toLocaleDateString('en-US', {
         weekday: 'short',
       })[0],
-      done: false, // default false
+      done: false,
       today: i === today,
     })
   }
@@ -37,15 +37,20 @@ const mockHabits = [
   { id: '3', name: 'exercise' },
 ]
 
-const Home = () => {
+export default function Tracker() {
   const { arr: baseMonthDays, todayIndex } = useMemo(() => getMonthDays(), [])
+
   const [habits, setHabits] = useState(() =>
-    mockHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
+    mockHabits.map(h => ({
+      ...h,
+      days: JSON.parse(JSON.stringify(baseMonthDays)),
+    }))
   )
 
-  const flatListRefs = useRef<FlatList[]>([])
+  // store refs to each horizontal FlatList
+  const flatListRefs = useRef<(FlatList<any> | null)[]>([])
 
-  // Scroll each habit's FlatList to today's index on mount
+  // scroll each habit's FlatList to (almost) today's date when screen loads
   useEffect(() => {
     flatListRefs.current.forEach(ref => {
       ref?.scrollToIndex({
@@ -55,13 +60,14 @@ const Home = () => {
     })
   }, [todayIndex])
 
-  // Toggle selected day (done/not done)
+  // toggle completion for a given habit on a given day
   const toggleDay = (habitId: string, dayNumber: number) => {
     setHabits(prev =>
       prev.map(habit => {
         if (habit.id === habitId) {
-          const updatedDays = habit.days.map((d: { day: number; done: any }) =>
-            d.day === dayNumber ? { ...d, done: !d.done } : d
+          const updatedDays = habit.days.map(
+            (d: { day: number; done: boolean }) =>
+              d.day === dayNumber ? { ...d, done: !d.done } : d
           )
           return { ...habit, days: updatedDays }
         }
@@ -70,76 +76,116 @@ const Home = () => {
     )
   }
 
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={habits}
-        keyExtractor={item => item.id}
-        renderItem={({ item, index }) => (
-          <View style={styles.habitBlock}>
-            <Text style={styles.habitName}>{item.name}</Text>
-            <Text style={styles.monthLabel}>
-              {new Date().toLocaleString('default', { month: 'short' })}
-            </Text>
+  // formatted today's date for header
+  const today = new Date()
+  const formattedDate = today.toLocaleDateString('en-NZ', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
-            <FlatList
-              ref={el => (flatListRefs.current[index] = el!)}
-              data={item.days}
-              keyExtractor={d => d.day.toString()}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              getItemLayout={(data, idx) => ({
-                length: 50,
-                offset: 50 * idx,
-                index: idx,
-              })}
-              renderItem={({ item: d }) => (
-                <View style={styles.dayColumn}>
-                  <TouchableOpacity
-                    onPress={() => toggleDay(item.id, d.day)}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.circle,
-                        d.done
-                          ? styles.doneCircle
-                          : d.today
-                          ? styles.todayCircle
-                          : styles.defaultCircle,
-                      ]}
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
+        {/* Header / Intro Section */}
+        <View style={styles.header}>
+          <Text style={styles.todayDate}>{formattedDate}</Text>
+          <Text style={styles.motivation}>How are your habits going today?</Text>
+        </View>
+
+        {/* Habits List */}
+        <FlatList
+          data={habits}
+          keyExtractor={item => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          renderItem={({ item, index }) => (
+            <View style={styles.habitBlock}>
+              <Text style={styles.habitName}>{item.name}</Text>
+              <Text style={styles.monthLabel}>
+                {new Date().toLocaleString('default', { month: 'short' })}
+              </Text>
+
+              <FlatList
+                // return void here so TS stops complaining
+                ref={el => {
+                  flatListRefs.current[index] = el
+                }}
+                data={item.days}
+                keyExtractor={d => d.day.toString()}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                getItemLayout={(_, idx) => ({
+                  length: 50,
+                  offset: 50 * idx,
+                  index: idx,
+                })}
+                renderItem={({ item: d }) => (
+                  <View style={styles.dayColumn}>
+                    <TouchableOpacity
+                      onPress={() => toggleDay(item.id, d.day)}
+                      activeOpacity={0.7}
                     >
-                      <Text
+                      <View
                         style={[
-                          styles.dayNumber,
+                          styles.circle,
                           d.done
-                            ? { color: '#fff' }
+                            ? styles.doneCircle
                             : d.today
-                            ? { color: '#000' }
-                            : { color: '#555' },
+                            ? styles.todayCircle
+                            : styles.defaultCircle,
                         ]}
                       >
-                        {d.day}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <Text style={styles.dayLabel}>{d.weekday}</Text>
-                </View>
-              )}
-            />
-          </View>
-        )}
-      />
-    </View>
+                        <Text
+                          style={[
+                            styles.dayNumber,
+                            d.done
+                              ? { color: '#fff' }
+                              : d.today
+                              ? { color: '#000' }
+                              : { color: '#555' },
+                          ]}
+                        >
+                          {d.day}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <Text style={styles.dayLabel}>{d.weekday}</Text>
+                  </View>
+                )}
+              />
+            </View>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
     paddingHorizontal: 20,
-    paddingTop: 40,
+  },
+  header: {
+    marginTop: 10,
+    marginBottom: 25,
+  },
+  todayDate: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+  },
+  motivation: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 4,
   },
   habitBlock: {
     marginBottom: 40,
@@ -189,5 +235,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 })
-
-export default Home
