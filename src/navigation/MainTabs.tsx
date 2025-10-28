@@ -44,22 +44,20 @@ function Tabs() {
 // Combine tabs + article detail screen
 export default function MainTabs() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        {/* All tab screens */}
-        <Stack.Screen
-          name="Tabs"
-          component={Tabs}
-          options={{ headerShown: false }}
-        />
+    <Stack.Navigator>
+      {/* All tab screens */}
+      <Stack.Screen
+        name="Tabs"
+        component={Tabs}
+        options={{ headerShown: false }}
+      />
 
-        {/* New ArticleDetails screen (opens when article tapped) */}
-        <Stack.Screen
-          name="ArticleDetails"
-          component={ArticleDetails}
-          options={{ headerShown: false }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+      {/* New ArticleDetails screen (opens when article tapped) */}
+      <Stack.Screen
+        name="ArticleDetails"
+        component={ArticleDetails}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
   )
 }

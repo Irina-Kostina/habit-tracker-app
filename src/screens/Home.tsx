@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView, Image }
 import { Ionicons } from '@expo/vector-icons'
 // Circular progress component
 import * as Progress from 'react-native-progress'
+import { useHabits } from '../context/HabitContext'
 
 // Home screen component
 export default function Home({ navigation }: any) {
@@ -17,26 +18,15 @@ export default function Home({ navigation }: any) {
     year: 'numeric', // e.g. “2025”
   })
 
-  // Mock data for user habits (later will come from storage or API)
-  // Each habit has an ID, name, and a boolean (done or not done)
-  const [habits, setHabits] = useState([
-    { id: '1', name: 'Morning stretch', done: true },
-    { id: '2', name: 'Drink 2L of water', done: false },
-    { id: '3', name: 'Read 20 minutes', done: false },
-    { id: '4', name: 'Meditate 10 mins', done: true },
-    { id: '5', name: 'Go for a walk', done: false },
-    { id: '6', name: 'Eat healthy lunch', done: false },
-  ])
+  // Use shared habits from context instead of local mock data
+  const { habits } = useHabits()
 
   // Calculate daily progress:
-  // Count total habits and completed ones
   const total = habits.length
-  const completed = habits.filter(h => h.done).length
-  // Divide completed by total to get progress value (between 0 and 1)
+  const completed = habits.filter((h) => h.done).length
   const progress = total > 0 ? completed / total : 0
 
-  // Motivational messages array
-  // (Later can be replaced with quotes API or date-based messages)
+  // Motivational messages
   const messages = [
     'Small things become great when done with love.',
     'Discipline is choosing what you want most over what you want now.',
@@ -45,23 +35,20 @@ export default function Home({ navigation }: any) {
     'Consistency creates confidence.',
   ]
 
-  // Current message to display on screen
   const [message, setMessage] = useState('')
 
-  // Pick a random motivational quote when screen first loads
   useEffect(() => {
     const random = Math.floor(Math.random() * messages.length)
     setMessage(messages[random])
   }, [])
 
-  // Renders each habit as a list row
+  // Renders each habit
   const renderHabit = ({ item }: any) => (
     <View style={styles.habitItem}>
-      {/* Circle icon changes depending on habit status */}
       <Ionicons
         name={item.done ? 'checkmark-circle' : 'ellipse-outline'}
         size={22}
-        color={item.done ? '#10B981' : '#9CA3AF'} // success green for done, neutral gray otherwise
+        color={item.done ? '#10B981' : '#9CA3AF'}
       />
       <Text style={styles.habitText}>{item.name}</Text>
     </View>
@@ -89,40 +76,36 @@ export default function Home({ navigation }: any) {
     },
   ]
 
-const renderArticle = ({ item }: any) => (
-  <TouchableOpacity
-    style={styles.articleCard}
-    onPress={() =>
-      navigation.navigate('ArticleDetails', {
-        title: item.title,
-        subtitle: item.subtitle,
-        image: item.image,
-        content:
-          item.content ||
-          'This is a full article about psychology and motivation. Here you can add detailed text later, like advice on building good habits, understanding behaviour patterns, and staying consistent. The text can be long and scrollable.',
-      })
-    }
-  >
-    <Image source={{ uri: item.image }} style={styles.articleImage} />
-    <View style={styles.articleTextBlock}>
-      <Text style={styles.articleTitle}>{item.title}</Text>
-      <Text style={styles.articleSubtitle}>{item.subtitle}</Text>
-    </View>
-  </TouchableOpacity>
-)
-
+  const renderArticle = ({ item }: any) => (
+    <TouchableOpacity
+      style={styles.articleCard}
+      onPress={() =>
+        navigation.navigate('ArticleDetails', {
+          title: item.title,
+          subtitle: item.subtitle,
+          image: item.image,
+          content:
+            item.content ||
+            'This is a full article about psychology and motivation. Here you can add detailed text later, like advice on building good habits, understanding behaviour patterns, and staying consistent. The text can be long and scrollable.',
+        })
+      }
+    >
+      <Image source={{ uri: item.image }} style={styles.articleImage} />
+      <View style={styles.articleTextBlock}>
+        <Text style={styles.articleTitle}>{item.title}</Text>
+        <Text style={styles.articleSubtitle}>{item.subtitle}</Text>
+      </View>
+    </TouchableOpacity>
+  )
 
   // Main screen layout
   return (
-    // ScrollView allows vertical scrolling (in case many habits)
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
-      
-      {/* Header Section */}
       <Text style={styles.date}>{formattedDate}</Text>
       <Text style={styles.greeting}>Welcome back, Irina</Text>
       <Text style={styles.message}>{message}</Text>
 
-      {/* --- NEW: Dashboard-style quick action cards --- */}
+      {/* --- Dashboard-style quick action cards --- */}
       <View style={styles.grid}>
         {/* Card 1 — Track Habits */}
         <TouchableOpacity
@@ -157,16 +140,14 @@ const renderArticle = ({ item }: any) => (
           <Text style={styles.cardSubtitleLight}>Check your streak</Text>
         </TouchableOpacity>
       </View>
-      {/* --- END OF NEW SECTION --- */}
 
       {/* Progress Section */}
       <View style={styles.progressSection}>
-        {/* Circular progress chart showing % of completed habits */}
         <Progress.Circle
-          size={110}              
-          progress={progress}     
-          showsText={true}        
-          color="#2563EB"         
+          size={110}
+          progress={progress}
+          showsText={true}
+          color="#2563EB"
           unfilledColor="#E5E7EB"
           borderWidth={0}
           thickness={8}
@@ -186,7 +167,7 @@ const renderArticle = ({ item }: any) => (
         scrollEnabled={false}
       />
 
-      {/* --- NEW SECTION: Explore Articles --- */}
+      {/* Explore Articles */}
       <Text style={styles.sectionTitle}>Explore</Text>
       <FlatList
         data={articles}
@@ -194,9 +175,7 @@ const renderArticle = ({ item }: any) => (
         keyExtractor={(item) => item.id}
         scrollEnabled={false}
       />
-      {/* --- END NEW SECTION --- */}
 
-      {/* Navigation button to open the Tracker tab */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('Tracker')}
@@ -207,34 +186,14 @@ const renderArticle = ({ item }: any) => (
   )
 }
 
-// Styling
+// styles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  scrollContainer: {
-    padding: 24,
-    paddingTop: 80,
-  },
-  date: {
-    fontSize: 20,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#2563EB',
-  },
-  message: {
-    fontSize: 16,
-    color: '#1F2937',
-    marginTop: 8,
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  scrollContainer: { padding: 24, paddingTop: 80 },
+  date: { fontSize: 20, color: '#6B7280', marginBottom: 4 },
+  greeting: { fontSize: 26, fontWeight: '700', color: '#2563EB' },
+  message: { fontSize: 16, color: '#1F2937', marginTop: 8, marginBottom: 24 },
 
-  /* --- NEW STYLES FOR DASHBOARD CARDS --- */
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -271,19 +230,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   newText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  /* --- END NEW STYLES --- */
-
-  progressSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
+  progressSection: { alignItems: 'center', marginBottom: 24 },
   summaryText: { marginTop: 8, fontSize: 16, color: '#1F2937' },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#F59E0B',
-    marginBottom: 12,
-  },
+  sectionTitle: { fontSize: 20, fontWeight: '600', color: '#F59E0B', marginBottom: 12 },
   habitItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   habitText: { marginLeft: 10, fontSize: 16, color: '#1F2937' },
   button: {
@@ -295,8 +244,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-
-  /* --- NEW STYLES FOR EXPLORE ARTICLES --- */
   articleCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -308,21 +255,8 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: 'hidden',
   },
-  articleImage: {
-    width: '100%',
-    height: 140,
-  },
-  articleTextBlock: {
-    padding: 14,
-  },
-  articleTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  articleSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
+  articleImage: { width: '100%', height: 140 },
+  articleTextBlock: { padding: 14 },
+  articleTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  articleSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },
 })

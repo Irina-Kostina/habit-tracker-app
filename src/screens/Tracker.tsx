@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useHabits } from '../context/HabitContext' // ✅ added import
 
 // Helper: generate all days of this month
 function getMonthDays() {
@@ -30,17 +31,15 @@ function getMonthDays() {
   return { arr, todayIndex: today - 1 }
 }
 
-// Mock habits
-const mockHabits = [
-  { id: '1', name: 'Sleep 8hrs' },
-  { id: '2', name: 'Meditate' },
-  { id: '3', name: 'Exercise' },
-]
-
 export default function Tracker() {
+  // ✅ Use shared habits from context
+  const { habits: sharedHabits } = useHabits()
+
   const { arr: baseMonthDays, todayIndex } = useMemo(() => getMonthDays(), [])
+
+  // ✅ Create a local copy that attaches the month days to each shared habit
   const [habits, setHabits] = useState(() =>
-    mockHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
+    sharedHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
   )
 
   const flatListRefs = useRef<(FlatList<any> | null)[]>([])
@@ -106,7 +105,6 @@ export default function Tracker() {
                 keyExtractor={d => d.day.toString()}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                // removed all padding — circles touch screen edges
                 contentContainerStyle={{
                   paddingLeft: 0,
                   paddingRight: 0,
@@ -166,7 +164,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 0, // no side padding
+    paddingHorizontal: 0,
   },
   header: {
     marginTop: 10,
@@ -204,7 +202,7 @@ const styles = StyleSheet.create({
   },
   dayColumn: {
     alignItems: 'center',
-    marginRight: 3, // no gap between circles
+    marginRight: 3,
   },
   circle: {
     width: 45,
