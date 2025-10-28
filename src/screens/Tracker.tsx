@@ -30,27 +30,21 @@ function getMonthDays() {
   return { arr, todayIndex: today - 1 }
 }
 
-// Mock habits for now
+// Mock habits
 const mockHabits = [
-  { id: '1', name: 'sleep 8hrs' },
-  { id: '2', name: 'meditate' },
-  { id: '3', name: 'exercise' },
+  { id: '1', name: 'Sleep 8hrs' },
+  { id: '2', name: 'Meditate' },
+  { id: '3', name: 'Exercise' },
 ]
 
 export default function Tracker() {
   const { arr: baseMonthDays, todayIndex } = useMemo(() => getMonthDays(), [])
-
   const [habits, setHabits] = useState(() =>
-    mockHabits.map(h => ({
-      ...h,
-      days: JSON.parse(JSON.stringify(baseMonthDays)),
-    }))
+    mockHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
   )
 
-  // store refs to each horizontal FlatList
   const flatListRefs = useRef<(FlatList<any> | null)[]>([])
 
-  // scroll each habit's FlatList to (almost) today's date when screen loads
   useEffect(() => {
     flatListRefs.current.forEach(ref => {
       ref?.scrollToIndex({
@@ -60,14 +54,12 @@ export default function Tracker() {
     })
   }, [todayIndex])
 
-  // toggle completion for a given habit on a given day
   const toggleDay = (habitId: string, dayNumber: number) => {
     setHabits(prev =>
       prev.map(habit => {
         if (habit.id === habitId) {
-          const updatedDays = habit.days.map(
-            (d: { day: number; done: boolean }) =>
-              d.day === dayNumber ? { ...d, done: !d.done } : d
+          const updatedDays = habit.days.map((d: { day: number; done: boolean }) =>
+            d.day === dayNumber ? { ...d, done: !d.done } : d
           )
           return { ...habit, days: updatedDays }
         }
@@ -76,7 +68,6 @@ export default function Tracker() {
     )
   }
 
-  // formatted today's date for header
   const today = new Date()
   const formattedDate = today.toLocaleDateString('en-NZ', {
     weekday: 'long',
@@ -88,13 +79,13 @@ export default function Tracker() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        {/* Header / Intro Section */}
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.todayDate}>{formattedDate}</Text>
           <Text style={styles.motivation}>How are your habits going today?</Text>
         </View>
 
-        {/* Habits List */}
+        {/* Habits */}
         <FlatList
           data={habits}
           keyExtractor={item => item.id}
@@ -108,7 +99,6 @@ export default function Tracker() {
               </Text>
 
               <FlatList
-                // return void here so TS stops complaining
                 ref={el => {
                   flatListRefs.current[index] = el
                 }}
@@ -116,6 +106,11 @@ export default function Tracker() {
                 keyExtractor={d => d.day.toString()}
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                // removed all padding — circles touch screen edges
+                contentContainerStyle={{
+                  paddingLeft: 0,
+                  paddingRight: 0,
+                }}
                 getItemLayout={(_, idx) => ({
                   length: 50,
                   offset: 50 * idx,
@@ -171,11 +166,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0, // no side padding
   },
   header: {
     marginTop: 10,
     marginBottom: 25,
+    paddingHorizontal: 20,
   },
   todayDate: {
     fontSize: 18,
@@ -189,6 +185,7 @@ const styles = StyleSheet.create({
   },
   habitBlock: {
     marginBottom: 40,
+    paddingHorizontal: 0,
   },
   habitName: {
     fontSize: 20,
@@ -196,21 +193,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'lowercase',
     color: '#000',
+    paddingHorizontal: 20,
   },
   monthLabel: {
     fontSize: 14,
     color: '#9CA3AF',
     marginBottom: 8,
     textTransform: 'lowercase',
+    paddingHorizontal: 20,
   },
   dayColumn: {
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 3, // no gap between circles
   },
   circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
