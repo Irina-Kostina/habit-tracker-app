@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 // Importing UI elements from React Native
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView, Image } from 'react-native'
 // Icon library for checkmarks and circles
 import { Ionicons } from '@expo/vector-icons'
 // Circular progress component
@@ -67,6 +67,38 @@ export default function Home({ navigation }: any) {
     </View>
   )
 
+  // --- NEW: Article Data ---
+  const articles = [
+    {
+      id: '1',
+      title: 'The Psychology of Habits',
+      subtitle: 'Understand how habits shape your life and how to reprogram them.',
+      image: 'https://images.unsplash.com/photo-1581091215367-59ab6b6d4392',
+    },
+    {
+      id: '2',
+      title: 'Motivation That Lasts',
+      subtitle: 'Discover how to stay consistent even when you don’t feel inspired.',
+      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f',
+    },
+    {
+      id: '3',
+      title: 'Mindfulness for Busy Minds',
+      subtitle: 'Learn to pause and build better awareness during your day.',
+      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773',
+    },
+  ]
+
+  const renderArticle = ({ item }: any) => (
+    <TouchableOpacity style={styles.articleCard}>
+      <Image source={{ uri: item.image }} style={styles.articleImage} />
+      <View style={styles.articleTextBlock}>
+        <Text style={styles.articleTitle}>{item.title}</Text>
+        <Text style={styles.articleSubtitle}>{item.subtitle}</Text>
+      </View>
+    </TouchableOpacity>
+  )
+
   // Main screen layout
   return (
     // ScrollView allows vertical scrolling (in case many habits)
@@ -118,14 +150,13 @@ export default function Home({ navigation }: any) {
       <View style={styles.progressSection}>
         {/* Circular progress chart showing % of completed habits */}
         <Progress.Circle
-          size={110}              // diameter of the circle
-          progress={progress}     // value between 0 and 1
-          showsText={true}        // shows text inside (like “60%”)
-          color="#2563EB"         // main accent blue
-          unfilledColor="#E5E7EB" // light grey background ring
+          size={110}              
+          progress={progress}     
+          showsText={true}        
+          color="#2563EB"         
+          unfilledColor="#E5E7EB"
           borderWidth={0}
           thickness={8}
-          // Format text to show as percentage
           formatText={() => `${Math.round(progress * 100)}%`}
         />
         <Text style={styles.summaryText}>
@@ -136,11 +167,21 @@ export default function Home({ navigation }: any) {
       {/* Habits list */}
       <Text style={styles.sectionTitle}>Today's Habits</Text>
       <FlatList
-        data={habits}               // full habit array
-        renderItem={renderHabit}    // function that renders each row
+        data={habits}
+        renderItem={renderHabit}
         keyExtractor={(item) => item.id}
-        scrollEnabled={false}       // disable nested scrolling
+        scrollEnabled={false}
       />
+
+      {/* --- NEW SECTION: Explore Articles --- */}
+      <Text style={styles.sectionTitle}>Explore</Text>
+      <FlatList
+        data={articles}
+        renderItem={renderArticle}
+        keyExtractor={(item) => item.id}
+        scrollEnabled={false}
+      />
+      {/* --- END NEW SECTION --- */}
 
       {/* Navigation button to open the Tracker tab */}
       <TouchableOpacity
@@ -157,7 +198,7 @@ export default function Home({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // off-white neutral background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     padding: 24,
@@ -165,17 +206,17 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 20,
-    color: '#6B7280', // neutral gray for date text
+    color: '#6B7280',
     marginBottom: 4,
   },
   greeting: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#2563EB', // calming blue for header
+    color: '#2563EB',
   },
   message: {
     fontSize: 16,
-    color: '#1F2937', // dark grey for readability
+    color: '#1F2937',
     marginTop: 8,
     marginBottom: 24,
   },
@@ -198,49 +239,15 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
-  cardBlue: {
-    backgroundColor: '#2563EB', // blue for tracking
-  },
-  cardAmber: {
-    backgroundColor: '#FCD34D', // soft amber for adding new habit
-    position: 'relative',
-  },
-  cardDark: {
-    backgroundColor: '#1F2937', // dark gray for stats
-  },
-  cardTitle: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: '600',
-    marginTop: 10,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    marginTop: 4,
-  },
-  cardTitleDark: {
-    fontSize: 18,
-    color: '#1F2937',
-    fontWeight: '600',
-    marginTop: 10,
-  },
-  cardSubtitleDark: {
-    fontSize: 14,
-    color: '#4B5563',
-    marginTop: 4,
-  },
-  cardTitleLight: {
-    fontSize: 18,
-    color: '#FAFAFA',
-    fontWeight: '600',
-    marginTop: 10,
-  },
-  cardSubtitleLight: {
-    fontSize: 14,
-    color: '#D1D5DB',
-    marginTop: 4,
-  },
+  cardBlue: { backgroundColor: '#2563EB' },
+  cardAmber: { backgroundColor: '#FCD34D', position: 'relative' },
+  cardDark: { backgroundColor: '#1F2937' },
+  cardTitle: { fontSize: 18, color: '#fff', fontWeight: '600', marginTop: 10 },
+  cardSubtitle: { fontSize: 14, color: '#E5E7EB', marginTop: 4 },
+  cardTitleDark: { fontSize: 18, color: '#1F2937', fontWeight: '600', marginTop: 10 },
+  cardSubtitleDark: { fontSize: 14, color: '#4B5563', marginTop: 4 },
+  cardTitleLight: { fontSize: 18, color: '#FAFAFA', fontWeight: '600', marginTop: 10 },
+  cardSubtitleLight: { fontSize: 14, color: '#D1D5DB', marginTop: 4 },
   newBadge: {
     position: 'absolute',
     top: 10,
@@ -250,49 +257,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  newText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  newText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   /* --- END NEW STYLES --- */
 
   progressSection: {
     alignItems: 'center',
     marginBottom: 24,
   },
-  summaryText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#1F2937',
-  },
+  summaryText: { marginTop: 8, fontSize: 16, color: '#1F2937' },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#F59E0B', // amber accent for section title
+    color: '#F59E0B',
     marginBottom: 12,
   },
-  habitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  habitText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#1F2937', // dark gray for main text
-  },
+  habitItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  habitText: { marginLeft: 10, fontSize: 16, color: '#1F2937' },
   button: {
-    backgroundColor: '#2563EB', // primary blue button
+    backgroundColor: '#2563EB',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 28,
     marginBottom: 40,
   },
-  buttonText: {
-    color: '#fff',
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+
+  /* --- NEW STYLES FOR EXPLORE ARTICLES --- */
+  articleCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  articleImage: {
+    width: '100%',
+    height: 140,
+  },
+  articleTextBlock: {
+    padding: 14,
+  },
+  articleTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  articleSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
   },
 })
