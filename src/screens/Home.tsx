@@ -89,15 +89,28 @@ export default function Home({ navigation }: any) {
     },
   ]
 
-  const renderArticle = ({ item }: any) => (
-    <TouchableOpacity style={styles.articleCard}>
-      <Image source={{ uri: item.image }} style={styles.articleImage} />
-      <View style={styles.articleTextBlock}>
-        <Text style={styles.articleTitle}>{item.title}</Text>
-        <Text style={styles.articleSubtitle}>{item.subtitle}</Text>
-      </View>
-    </TouchableOpacity>
-  )
+const renderArticle = ({ item }: any) => (
+  <TouchableOpacity
+    style={styles.articleCard}
+    onPress={() =>
+      navigation.navigate('ArticleDetails', {
+        title: item.title,
+        subtitle: item.subtitle,
+        image: item.image,
+        content:
+          item.content ||
+          'This is a full article about psychology and motivation. Here you can add detailed text later, like advice on building good habits, understanding behaviour patterns, and staying consistent. The text can be long and scrollable.',
+      })
+    }
+  >
+    <Image source={{ uri: item.image }} style={styles.articleImage} />
+    <View style={styles.articleTextBlock}>
+      <Text style={styles.articleTitle}>{item.title}</Text>
+      <Text style={styles.articleSubtitle}>{item.subtitle}</Text>
+    </View>
+  </TouchableOpacity>
+)
+
 
   // Main screen layout
   return (
