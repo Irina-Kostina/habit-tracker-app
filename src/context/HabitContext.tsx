@@ -6,12 +6,15 @@ export type Habit = {
   id: string
   name: string
   done: boolean
+  frequency?: 'Daily' | 'Weekly' | 'Custom'
+  notes?: string
+  createdAt?: string
 }
 
 // 2. What we provide to the rest of the app
 type HabitContextType = {
   habits: Habit[]
-  addHabit: (name: string) => void
+  addHabit: (habit: Omit<Habit, 'id' | 'done'>) => void   // accepts full object
   toggleHabit: (id: string) => void
 }
 
@@ -56,18 +59,17 @@ export const HabitProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    // only save after initial load (avoid saving empty [])
     if (habits.length > 0) {
       saveHabits()
     }
   }, [habits])
 
   // --- Add new habit ---
-  const addHabit = (name: string) => {
+  const addHabit = (habit: Omit<Habit, 'id' | 'done'>) => {   // UPDATED
     const newHabit: Habit = {
-      id: Date.now().toString(), // simple unique id
-      name,
+      id: Date.now().toString(),
       done: false,
+      ...habit, // merge all extra fields (name, frequency, notes, createdAt)
     }
     setHabits((prev) => [...prev, newHabit])
   }
