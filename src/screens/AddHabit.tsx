@@ -39,7 +39,25 @@ export default function AddHabit({ navigation }: any) {
     setFrequency('Daily')
     setNotes('')
     Keyboard.dismiss()
-    navigation.navigate('Home')
+    // navigation.navigate('Home')
+
+        // Show success popup with navigation options
+    Alert.alert(
+      'You created a new habit!',
+      `"${trimmed}" has been added to your list.`,
+      [
+        {
+          text: 'Go to Tracker',
+          onPress: () => navigation.navigate('Tracker'),
+          style: 'default',
+        },
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('Home'),
+          style: 'cancel',
+        },
+      ]
+    )
   }
 
   return (
