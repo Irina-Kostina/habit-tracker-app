@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useHabits } from '../context/HabitContext' // ✅ added import
+import { useHabits } from '../context/HabitContext'
 
-// Helper: generate all days of this month
+// ✅ Helper: generate full month days with weekday info
 function getMonthDays() {
   const now = new Date()
   const year = now.getFullYear()
@@ -21,23 +21,22 @@ function getMonthDays() {
   for (let i = 1; i <= daysInMonth; i++) {
     arr.push({
       day: i,
-      weekday: new Date(year, month, i).toLocaleDateString('en-US', {
-        weekday: 'short',
-      })[0],
+      weekday: new Date(year, month, i)
+        .toLocaleDateString('en-US', { weekday: 'short' })
+        .slice(0, 3),
       done: false,
       today: i === today,
     })
   }
+
   return { arr, todayIndex: today - 1 }
 }
 
 export default function Tracker() {
-  // ✅ Use shared habits from context
   const { habits: sharedHabits } = useHabits()
-
   const { arr: baseMonthDays, todayIndex } = useMemo(() => getMonthDays(), [])
 
-  // ✅ Create a local copy that attaches the month days to each shared habit
+  // ✅ Create local habit data with month days
   const [habits, setHabits] = useState(() =>
     sharedHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
   )
@@ -45,14 +44,16 @@ export default function Tracker() {
   const flatListRefs = useRef<(FlatList<any> | null)[]>([])
 
   useEffect(() => {
+    // scroll horizontally so today is visible in center
     flatListRefs.current.forEach(ref => {
       ref?.scrollToIndex({
-        index: todayIndex > 1 ? todayIndex - 1 : 0,
+        index: Math.max(todayIndex - 3, 0),
         animated: false,
       })
     })
   }, [todayIndex])
 
+  // ✅ Toggle completion
   const toggleDay = (habitId: string, dayNumber: number) => {
     setHabits(prev =>
       prev.map(habit => {
@@ -84,18 +85,18 @@ export default function Tracker() {
           <Text style={styles.motivation}>How are your habits going today?</Text>
         </View>
 
-        {/* Habits */}
+        {/* Habit Cards */}
         <FlatList
           data={habits}
           keyExtractor={item => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           renderItem={({ item, index }) => (
-            <View style={styles.habitBlock}>
-              <Text style={styles.habitName}>{item.name}</Text>
-              <Text style={styles.monthLabel}>
-                {new Date().toLocaleString('default', { month: 'short' })}
-              </Text>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.habitName}>{item.name}</Text>
+                <Text style={styles.habitFreq}>Everyday</Text>
+              </View>
 
               <FlatList
                 ref={el => {
@@ -106,16 +107,20 @@ export default function Tracker() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{
-                  paddingLeft: 0,
-                  paddingRight: 0,
+                  paddingHorizontal: 10,
                 }}
                 getItemLayout={(_, idx) => ({
                   length: 50,
                   offset: 50 * idx,
                   index: idx,
                 })}
+                // ✅ limit visible days to 7 at a time
+                initialScrollIndex={Math.max(todayIndex - 3, 0)}
                 renderItem={({ item: d }) => (
                   <View style={styles.dayColumn}>
+                    {/* Weekday label above */}
+                    <Text style={styles.dayLabel}>{d.weekday}</Text>
+
                     <TouchableOpacity
                       onPress={() => toggleDay(item.id, d.day)}
                       activeOpacity={0.7}
@@ -144,7 +149,6 @@ export default function Tracker() {
                         </Text>
                       </View>
                     </TouchableOpacity>
-                    <Text style={styles.dayLabel}>{d.weekday}</Text>
                   </View>
                 )}
               />
@@ -156,20 +160,19 @@ export default function Tracker() {
   )
 }
 
+// 💅 Styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F9FAFB',
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
   },
   header: {
     marginTop: 10,
     marginBottom: 25,
-    paddingHorizontal: 20,
   },
   todayDate: {
     fontSize: 18,
@@ -181,33 +184,51 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
-  habitBlock: {
-    marginBottom: 40,
-    paddingHorizontal: 0,
+
+  // Card layout
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 10,
   },
   habitName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 8,
-    textTransform: 'lowercase',
     color: '#000',
-    paddingHorizontal: 20,
+    textTransform: 'capitalize',
   },
-  monthLabel: {
+  habitFreq: {
     fontSize: 14,
     color: '#9CA3AF',
-    marginBottom: 8,
-    textTransform: 'lowercase',
-    paddingHorizontal: 20,
   },
+
+  // Days
   dayColumn: {
     alignItems: 'center',
-    marginRight: 3,
+    marginRight: 8,
+  },
+  dayLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 4,
   },
   circle: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -225,10 +246,5 @@ const styles = StyleSheet.create({
   dayNumber: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  dayLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
   },
 })
