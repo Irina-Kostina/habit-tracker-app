@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useHabits } from '../context/HabitContext'
 
-// ✅ Helper: generate full month days with weekday info
+// Helper: generate all days for this month
 function getMonthDays() {
   const now = new Date()
   const year = now.getFullYear()
@@ -28,32 +28,48 @@ function getMonthDays() {
       today: i === today,
     })
   }
+  return arr
+}
 
-  return { arr, todayIndex: today - 1 }
+// Helper: get start (Monday) and end (Sunday) of current week
+function getCurrentWeekRange() {
+  const today = new Date()
+  const dayOfWeek = today.getDay() // Sunday = 0 ... Saturday = 6
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const monday = new Date(today)
+  monday.setDate(today.getDate() + mondayOffset)
+
+  const weekDays = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    weekDays.push({
+      day: d.getDate(),
+      weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3),
+      done: false,
+      today:
+        d.toDateString() === today.toDateString(), // mark true only for today
+    })
+  }
+
+  return weekDays
 }
 
 export default function Tracker() {
   const { habits: sharedHabits } = useHabits()
-  const { arr: baseMonthDays, todayIndex } = useMemo(() => getMonthDays(), [])
 
-  // ✅ Create local habit data with month days
+  // Get only current week days
+  const currentWeekDays = useMemo(() => getCurrentWeekRange(), [])
+
+  // Attach week days to each habit
   const [habits, setHabits] = useState(() =>
-    sharedHabits.map(h => ({ ...h, days: JSON.parse(JSON.stringify(baseMonthDays)) }))
+    sharedHabits.map(h => ({
+      ...h,
+      days: JSON.parse(JSON.stringify(currentWeekDays)),
+    }))
   )
 
-  const flatListRefs = useRef<(FlatList<any> | null)[]>([])
-
-  useEffect(() => {
-    // scroll horizontally so today is visible in center
-    flatListRefs.current.forEach(ref => {
-      ref?.scrollToIndex({
-        index: Math.max(todayIndex - 3, 0),
-        animated: false,
-      })
-    })
-  }, [todayIndex])
-
-  // ✅ Toggle completion
+  // Toggle completion
   const toggleDay = (habitId: string, dayNumber: number) => {
     setHabits(prev =>
       prev.map(habit => {
@@ -68,6 +84,7 @@ export default function Tracker() {
     )
   }
 
+  // Header date
   const today = new Date()
   const formattedDate = today.toLocaleDateString('en-NZ', {
     weekday: 'long',
@@ -82,7 +99,7 @@ export default function Tracker() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.todayDate}>{formattedDate}</Text>
-          <Text style={styles.motivation}>How are your habits going today?</Text>
+          <Text style={styles.motivation}>How are your habits going this week?</Text>
         </View>
 
         {/* Habit Cards */}
@@ -91,31 +108,28 @@ export default function Tracker() {
           keyExtractor={item => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.habitName}>{item.name}</Text>
-                <Text style={styles.habitFreq}>Everyday</Text>
+                <Text style={styles.habitFreq}>This week</Text>
               </View>
 
+              {/* Only 7 days — current week */}
               <FlatList
-                ref={el => {
-                  flatListRefs.current[index] = el
-                }}
                 data={item.days}
                 keyExtractor={d => d.day.toString()}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{
-                  paddingHorizontal: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
                 }}
                 getItemLayout={(_, idx) => ({
                   length: 50,
                   offset: 50 * idx,
                   index: idx,
                 })}
-                // ✅ limit visible days to 7 at a time
-                initialScrollIndex={Math.max(todayIndex - 3, 0)}
                 renderItem={({ item: d }) => (
                   <View style={styles.dayColumn}>
                     {/* Weekday label above */}
@@ -160,7 +174,7 @@ export default function Tracker() {
   )
 }
 
-// 💅 Styles
+// Styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -185,11 +199,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Card layout
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.05,
@@ -202,33 +215,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   habitName: {
     fontSize: 18,
     fontWeight: '700',
     color: '#000',
-    textTransform: 'capitalize',
   },
   habitFreq: {
     fontSize: 14,
     color: '#9CA3AF',
   },
 
-  // Days
   dayColumn: {
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 10,
   },
   dayLabel: {
     fontSize: 12,
     color: '#9CA3AF',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   circle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
