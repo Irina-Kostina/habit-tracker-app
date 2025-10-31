@@ -210,9 +210,15 @@ export default function Tracker() {
                   <Text style={styles.habitGoal}>Goal: {item.goal}</Text>
                 ) : null}
               </View>
-              <TouchableOpacity onPress={() => openEditModal(item)}>
+              <TouchableOpacity
+                onPress={() => openEditModal(item)}
+                style={styles.editButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.editText}>Edit</Text>
               </TouchableOpacity>
+
             </View>
 
             <FlatList
@@ -335,9 +341,12 @@ export default function Tracker() {
                     <TouchableOpacity
                       style={styles.closeModalButton}
                       onPress={() => setModalVisible(false)}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      activeOpacity={0.7}
                     >
                       <Text style={styles.closeModalText}>Cancel</Text>
                     </TouchableOpacity>
+
                   </ScrollView>
                 </View>
               </TouchableWithoutFeedback>
@@ -388,7 +397,7 @@ const styles = StyleSheet.create({
   },
   habitName: { fontSize: 18, fontWeight: '700', color: '#000' },
   habitGoal: { fontSize: 14, color: '#6B7280', marginTop: 2 },
-  editText: { fontSize: 14, color: '#3B82F6', fontWeight: '500' },
+  editText: { fontSize: 16, color: '#3B82F6', fontWeight: '500' },
 
   dayColumn: { alignItems: 'center', marginRight: 10 },
   dayLabel: { fontSize: 12, color: '#9CA3AF', marginBottom: 6 },
@@ -487,8 +496,21 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   deleteButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  closeModalButton: { marginTop: 10 },
+  // closeModalButton: { marginTop: 10 },
   closeModalText: { color: '#3B82F6', fontSize: 14 },
+
+  editButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+
+  closeModalButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
 
   // Done bar
   doneBar: {
