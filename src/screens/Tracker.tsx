@@ -16,7 +16,10 @@ import {
   InputAccessoryView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack' // import type helper
 import { useHabits } from '../context/HabitContext'
+import { TrackerStackParamList } from '../types/navigation' // import your new type
 
 /* ---------- Local Types ---------- */
 type Day = {
@@ -58,8 +61,14 @@ function getCurrentWeekRange(): Day[] {
 
 /* ---------- Component ---------- */
 export default function Tracker() {
-  const { habits: sharedHabits, addHabit, deleteHabit } = useHabits()
+  // Type-safe navigation
+  type TrackerNavigationProp = NativeStackNavigationProp<
+    TrackerStackParamList,
+    'Tracker'
+  >
+  const navigation = useNavigation<TrackerNavigationProp>()
 
+  const { habits: sharedHabits, addHabit, deleteHabit } = useHabits()
   const currentWeekDays = useMemo(() => getCurrentWeekRange(), [])
 
   // ---------- Local list used for rendering (mirrors context) ----------
@@ -193,7 +202,7 @@ export default function Tracker() {
     year: 'numeric',
   })
 
-  /* ---------- UI ---------- */
+    /* ---------- UI ---------- */
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -203,9 +212,14 @@ export default function Tracker() {
           <Text style={styles.motivation}>How are your habits going this week?</Text>
         </View>
 
-        {/* Habit cards (render local list) */}
+        {/* Habit cards */}
         {list.map(item => (
-          <View key={item.id} style={styles.card}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.card}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('HabitDetails', { habitId: item.id })} // ✅ opens analytics screen
+          >
             <View style={styles.cardHeader}>
               <View>
                 <Text style={styles.habitName}>{item.name}</Text>
@@ -213,6 +227,7 @@ export default function Tracker() {
                   <Text style={styles.habitGoal}>Goal: {item.goal}</Text>
                 ) : null}
               </View>
+
               <TouchableOpacity
                 onPress={() => openEditModal(item)}
                 style={styles.editButton}
@@ -223,7 +238,7 @@ export default function Tracker() {
               </TouchableOpacity>
             </View>
 
-            {/* Week days (visual only for now) */}
+            {/* Week days */}
             <FlatList
               data={currentWeekDays}
               keyExtractor={d => d.day.toString()}
@@ -251,7 +266,7 @@ export default function Tracker() {
                 </View>
               )}
             />
-          </View>
+          </TouchableOpacity>
         ))}
 
         {/* Add button */}
@@ -320,7 +335,6 @@ export default function Tracker() {
                       </Text>
                     </TouchableOpacity>
 
-                    {/* Delete only when editing */}
                     {isEditing && (
                       <TouchableOpacity
                         style={styles.deleteButton}
@@ -358,7 +372,7 @@ export default function Tracker() {
     </SafeAreaView>
   )
 }
-
+      
 /* ---------- Styles ---------- */
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F9FAFB' },

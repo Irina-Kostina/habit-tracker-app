@@ -5,19 +5,31 @@ import Home from '../screens/Home'
 import Tracker from '../screens/Tracker'
 import Stats from '../screens/Stats'
 import ArticleDetails from '../screens/ArticleDetails'
+import HabitDetails from '../screens/HabitDetails'
 import { Ionicons } from '@expo/vector-icons'
 
-// Create tab and stack navigators
+// --- Create navigators ---
 const Tab = createBottomTabNavigator()
-const Stack = createNativeStackNavigator()
+const RootStack = createNativeStackNavigator() // renamed for clarity
+const TrackerStackNav = createNativeStackNavigator()
 
-// Tabs (your main 3 screens)
+// --- Tracker stack (for navigating inside Tracker tab) ---
+function TrackerStack() {
+  return (
+    <TrackerStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <TrackerStackNav.Screen name="TrackerMain" component={Tracker} />
+      <TrackerStackNav.Screen name="HabitDetails" component={HabitDetails} />
+    </TrackerStackNav.Navigator>
+  )
+}
+
+// --- Bottom Tabs ---
 function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home'
+          let iconName: keyof typeof Ionicons.glyphMap = 'home-outline'
 
           if (route.name === 'Home') iconName = 'home-outline'
           else if (route.name === 'Tracker') iconName = 'list-outline'
@@ -31,29 +43,19 @@ function Tabs() {
       })}
     >
       <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="Tracker" component={Tracker} />
+      {/* Tracker tab now uses its own stack */}
+      <Tab.Screen name="Tracker" component={TrackerStack} />
       <Tab.Screen name="Stats" component={Stats} />
     </Tab.Navigator>
   )
 }
 
-// Combine tabs + article detail screen
+// --- Root Stack (tabs + article details) ---
 export default function MainTabs() {
   return (
-    <Stack.Navigator>
-      {/* All tab screens */}
-      <Stack.Screen
-        name="Tabs"
-        component={Tabs}
-        options={{ headerShown: false }}
-      />
-
-      {/* Article details screen */}
-      <Stack.Screen
-        name="ArticleDetails"
-        component={ArticleDetails}
-        options={{ headerShown: false }}
-      />
-    </Stack.Navigator>
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Tabs" component={Tabs} />
+      <RootStack.Screen name="ArticleDetails" component={ArticleDetails} />
+    </RootStack.Navigator>
   )
 }
