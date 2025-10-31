@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -26,12 +26,11 @@ type Day = {
   today: boolean
 }
 
-type TrackerHabit = {
+type HabitItem = {
   id: string
   name: string
   goal?: string
   notes?: string
-  days: Day[]
   createdAt?: string
 }
 
@@ -59,25 +58,34 @@ function getCurrentWeekRange(): Day[] {
 
 /* ---------- Component ---------- */
 export default function Tracker() {
-  // Pull what we know is typed; keep a reference to the raw ctx for optional funcs
-  const habitsCtx = useHabits()
-  const { habits: sharedHabits, addHabit } = habitsCtx as any
-  const deleteHabit =
-    (habitsCtx as any).deleteHabit as ((id: string) => void) | undefined
+  const { habits: sharedHabits, addHabit, deleteHabit } = useHabits()
 
   const currentWeekDays = useMemo(() => getCurrentWeekRange(), [])
 
-  // Build local tracker habits with our strict type
-  const [habits, setHabits] = useState<TrackerHabit[]>(() =>
-    (sharedHabits ?? []).map((h: any): TrackerHabit => ({
-      id: String(h.id ?? Date.now()),
-      name: String(h.name ?? 'Untitled'),
-      goal: h.goal,
-      notes: h.notes,
-      createdAt: h.createdAt,
-      days: JSON.parse(JSON.stringify(currentWeekDays)) as Day[],
-    }))
+  // ---------- Local list used for rendering (mirrors context) ----------
+  const [list, setList] = useState<HabitItem[]>(
+    () =>
+      (sharedHabits ?? []).map((h: any) => ({
+        id: String(h.id ?? h.createdAt ?? Date.now()),
+        name: String(h.name ?? 'Untitled'),
+        goal: h.goal,
+        notes: h.notes,
+        createdAt: h.createdAt,
+      })) as HabitItem[]
   )
+
+  // Keep local list in sync when context changes (e.g., after app restart)
+  useEffect(() => {
+    setList(
+      (sharedHabits ?? []).map((h: any) => ({
+        id: String(h.id ?? h.createdAt ?? Date.now()),
+        name: String(h.name ?? 'Untitled'),
+        goal: h.goal,
+        notes: h.notes,
+        createdAt: h.createdAt,
+      }))
+    )
+  }, [sharedHabits])
 
   // Modal + form state
   const [modalVisible, setModalVisible] = useState(false)
@@ -85,24 +93,9 @@ export default function Tracker() {
   const [habitName, setHabitName] = useState('')
   const [goal, setGoal] = useState('')
   const [notes, setNotes] = useState('')
-  const [selectedHabit, setSelectedHabit] = useState<TrackerHabit | null>(null)
+  const [selectedHabit, setSelectedHabit] = useState<HabitItem | null>(null)
 
   const inputAccessoryViewID = 'DoneBar'
-
-  /* ---------- Toggle a day ---------- */
-  const toggleDay = (habitId: string, dayNumber: number) => {
-    setHabits(prev =>
-      prev.map(habit => {
-        if (habit.id === habitId) {
-          const updatedDays = habit.days.map(d =>
-            d.day === dayNumber ? { ...d, done: !d.done } : d
-          )
-          return { ...habit, days: updatedDays }
-        }
-        return habit
-      })
-    )
-  }
 
   /* ---------- Open Add / Edit ---------- */
   const openAddModal = () => {
@@ -114,7 +107,7 @@ export default function Tracker() {
     setModalVisible(true)
   }
 
-  const openEditModal = (habit: TrackerHabit) => {
+  const openEditModal = (habit: HabitItem) => {
     setHabitName(habit.name)
     setGoal(habit.goal ?? '')
     setNotes(habit.notes ?? '')
@@ -132,29 +125,36 @@ export default function Tracker() {
     }
 
     if (isEditing && selectedHabit) {
-      // Update existing (type-safe)
-      setHabits(prev =>
+      // Update locally
+      setList(prev =>
         prev.map(h =>
           h.id === selectedHabit.id ? { ...h, name: trimmed, goal, notes } : h
         )
       )
+      // (Optional) If your context exposes an update function, call it here.
+
       setModalVisible(false)
       Keyboard.dismiss()
       Alert.alert('Habit updated', `"${trimmed}" has been updated.`)
     } else {
-      // Create new TrackerHabit
-      const newHabit: TrackerHabit = {
+      // Create new locally
+      const newHabit: HabitItem = {
         id: Date.now().toString(),
         name: trimmed,
         goal,
         notes,
-        days: JSON.parse(JSON.stringify(currentWeekDays)) as Day[],
         createdAt: new Date().toISOString(),
       }
+      setList(prev => [...prev, newHabit])
 
-      setHabits(prev => [...prev, newHabit])
-      // Context add (optional typing)
-      ;(addHabit as undefined | ((h: any) => void))?.(newHabit)
+      // Also push to context if available
+      addHabit?.({
+        name: newHabit.name,
+        goal: newHabit.goal,
+        notes: newHabit.notes,
+        createdAt: newHabit.createdAt,
+      })
+
       setModalVisible(false)
       Keyboard.dismiss()
       Alert.alert('You created a new habit!', `"${trimmed}" has been added.`)
@@ -168,15 +168,18 @@ export default function Tracker() {
   /* ---------- Delete ---------- */
   const handleDelete = () => {
     if (!selectedHabit) return
-    Alert.alert('Delete Habit', 'Are you sure?', [
+    Alert.alert('Delete Habit', 'Are you sure you want to delete this habit?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          setHabits(prev => prev.filter(h => h.id !== selectedHabit.id))
-          deleteHabit?.(selectedHabit.id) // optional from context
+          // Remove immediately from local UI
+          setList(prev => prev.filter(h => h.id !== selectedHabit.id))
+          // Also tell context if it supports deletion
+          deleteHabit?.(selectedHabit.id)
           setModalVisible(false)
+          Alert.alert('Habit deleted')
         },
       },
     ])
@@ -200,8 +203,8 @@ export default function Tracker() {
           <Text style={styles.motivation}>How are your habits going this week?</Text>
         </View>
 
-        {/* Habit cards */}
-        {habits.map(item => (
+        {/* Habit cards (render local list) */}
+        {list.map(item => (
           <View key={item.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View>
@@ -218,11 +221,11 @@ export default function Tracker() {
               >
                 <Text style={styles.editText}>Edit</Text>
               </TouchableOpacity>
-
             </View>
 
+            {/* Week days (visual only for now) */}
             <FlatList
-              data={item.days}
+              data={currentWeekDays}
               keyExtractor={d => d.day.toString()}
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -230,34 +233,21 @@ export default function Tracker() {
               renderItem={({ item: d }) => (
                 <View style={styles.dayColumn}>
                   <Text style={styles.dayLabel}>{d.weekday}</Text>
-                  <TouchableOpacity
-                    onPress={() => toggleDay(item.id, d.day)}
-                    activeOpacity={0.7}
+                  <View
+                    style={[
+                      styles.circle,
+                      d.today ? styles.todayCircle : styles.defaultCircle,
+                    ]}
                   >
-                    <View
+                    <Text
                       style={[
-                        styles.circle,
-                        d.done
-                          ? styles.doneCircle
-                          : d.today
-                          ? styles.todayCircle
-                          : styles.defaultCircle,
+                        styles.dayNumber,
+                        d.today ? { color: '#000' } : { color: '#555' },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.dayNumber,
-                          d.done
-                            ? { color: '#fff' }
-                            : d.today
-                            ? { color: '#000' }
-                            : { color: '#555' },
-                        ]}
-                      >
-                        {d.day}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                      {d.day}
+                    </Text>
+                  </View>
                 </View>
               )}
             />
@@ -276,7 +266,6 @@ export default function Tracker() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          {/* Tap outside to close */}
           <TouchableWithoutFeedback
             onPress={() => {
               Keyboard.dismiss()
@@ -284,7 +273,6 @@ export default function Tracker() {
             }}
           >
             <View style={styles.overlayBackground}>
-              {/* Stop propagation inside the card */}
               <TouchableWithoutFeedback onPress={() => {}}>
                 <View style={styles.modalContainer}>
                   <ScrollView
@@ -332,8 +320,12 @@ export default function Tracker() {
                       </Text>
                     </TouchableOpacity>
 
+                    {/* Delete only when editing */}
                     {isEditing && (
-                      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={handleDelete}
+                      >
                         <Text style={styles.deleteButtonText}>Delete Habit</Text>
                       </TouchableOpacity>
                     )}
@@ -346,14 +338,12 @@ export default function Tracker() {
                     >
                       <Text style={styles.closeModalText}>Cancel</Text>
                     </TouchableOpacity>
-
                   </ScrollView>
                 </View>
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
 
-          {/* iOS Done bar (dark) */}
           {Platform.OS === 'ios' && (
             <InputAccessoryView nativeID="DoneBar">
               <View style={styles.doneBar}>
@@ -397,6 +387,7 @@ const styles = StyleSheet.create({
   },
   habitName: { fontSize: 18, fontWeight: '700', color: '#000' },
   habitGoal: { fontSize: 14, color: '#6B7280', marginTop: 2 },
+  editButton: { paddingVertical: 6, paddingHorizontal: 10 },
   editText: { fontSize: 16, color: '#3B82F6', fontWeight: '500' },
 
   dayColumn: { alignItems: 'center', marginRight: 10 },
@@ -409,7 +400,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   defaultCircle: { backgroundColor: '#E5E7EB' },
-  doneCircle: { backgroundColor: '#000' },
   todayCircle: { backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#000' },
   dayNumber: { fontSize: 14, fontWeight: '600' },
 
@@ -423,7 +413,6 @@ const styles = StyleSheet.create({
   },
   addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -434,7 +423,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%', 
+    width: '100%',
   },
   modalContainer: {
     width: '90%',
@@ -496,23 +485,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   deleteButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  // closeModalButton: { marginTop: 10 },
   closeModalText: { color: '#3B82F6', fontSize: 14 },
-
-  editButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-  },
-
   closeModalButton: {
     marginTop: 16,
     paddingVertical: 12,
     paddingHorizontal: 24,
     alignItems: 'center',
   },
-
-  // Done bar
   doneBar: {
     backgroundColor: '#1C1C1E',
     padding: 10,

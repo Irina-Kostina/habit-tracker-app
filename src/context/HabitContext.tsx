@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-// 1. Type for a habit
+/* ---------- Type definitions ---------- */
 export type Habit = {
   id: string
   name: string
@@ -9,48 +9,68 @@ export type Habit = {
   frequency?: 'Daily' | 'Weekly' | 'Custom'
   notes?: string
   createdAt?: string
+  goal?: string
 }
 
-// 2. What we provide to the rest of the app
+/* ---------- Context type ---------- */
 type HabitContextType = {
   habits: Habit[]
-  addHabit: (habit: Omit<Habit, 'id' | 'done'>) => void   // accepts full object
+  addHabit: (habit: Omit<Habit, 'id' | 'done'>) => void
   toggleHabit: (id: string) => void
+  deleteHabit: (id: string) => void
 }
 
-// 3. Create the context
+/* ---------- Create context ---------- */
 const HabitContext = createContext<HabitContextType | undefined>(undefined)
 
-// 4. Provider component (wraps the whole app)
+/* ---------- Provider ---------- */
 export const HabitProvider = ({ children }: { children: React.ReactNode }) => {
   const [habits, setHabits] = useState<Habit[]>([])
+  const [loaded, setLoaded] = useState(false) // Wait until initial load before saving
 
-  // --- LOAD habits from AsyncStorage on app start ---
+  // --- Load habits from AsyncStorage when app starts ---
   useEffect(() => {
     const loadHabits = async () => {
       try {
         const json = await AsyncStorage.getItem('habits')
         if (json) {
-          const parsed: Habit[] = JSON.parse(json)
-          setHabits(parsed)
+          setHabits(JSON.parse(json))
         } else {
-          // If nothing saved yet, start with some demo habits
+          // Initial demo habits (only for first app launch)
           setHabits([
-            { id: '1', name: 'Morning stretch', done: true },
-            { id: '2', name: 'Drink 2L of water', done: false },
-            { id: '3', name: 'Read 20 minutes', done: false },
+            {
+              id: '1',
+              name: 'Morning stretch',
+              done: true,
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: '2',
+              name: 'Drink 2L of water',
+              done: false,
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: '3',
+              name: 'Read 20 minutes',
+              done: false,
+              createdAt: new Date().toISOString(),
+            },
           ])
         }
       } catch (err) {
         console.log('Error loading habits', err)
+      } finally {
+        setLoaded(true)
       }
     }
 
     loadHabits()
   }, [])
 
-  // --- SAVE habits to AsyncStorage whenever they change ---
+  // --- Save habits to AsyncStorage whenever they change ---
   useEffect(() => {
+    if (!loaded) return // Prevent saving before initial load
     const saveHabits = async () => {
       try {
         await AsyncStorage.setItem('habits', JSON.stringify(habits))
@@ -58,43 +78,43 @@ export const HabitProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('Error saving habits', err)
       }
     }
+    saveHabits()
+  }, [habits, loaded])
 
-    if (habits.length > 0) {
-      saveHabits()
-    }
-  }, [habits])
-
-  // --- Add new habit ---
-  const addHabit = (habit: Omit<Habit, 'id' | 'done'>) => {   // UPDATED
+  /* ---------- Add new habit ---------- */
+  const addHabit = (habit: Omit<Habit, 'id' | 'done'>) => {
     const newHabit: Habit = {
       id: Date.now().toString(),
       done: false,
-      ...habit, // merge all extra fields (name, frequency, notes, createdAt)
+      createdAt: habit.createdAt ?? new Date().toISOString(),
+      ...habit,
     }
-    setHabits((prev) => [...prev, newHabit])
+    setHabits(prev => [...prev, newHabit])
   }
 
-  // --- Toggle done / not done ---
+  /* ---------- Toggle done/undone ---------- */
   const toggleHabit = (id: string) => {
-    setHabits((prev) =>
-      prev.map((h) =>
-        h.id === id ? { ...h, done: !h.done } : h
-      )
+    setHabits(prev =>
+      prev.map(h => (h.id === id ? { ...h, done: !h.done } : h))
     )
   }
 
+  /* ---------- Delete a habit permanently ---------- */
+  const deleteHabit = (id: string) => {
+    setHabits(prev => prev.filter(h => h.id !== id))
+  }
+
+  /* ---------- Provide context ---------- */
   return (
-    <HabitContext.Provider value={{ habits, addHabit, toggleHabit }}>
+    <HabitContext.Provider value={{ habits, addHabit, toggleHabit, deleteHabit }}>
       {children}
     </HabitContext.Provider>
   )
 }
 
-// 5. Custom hook for easy access
+/* ---------- Custom hook ---------- */
 export const useHabits = () => {
   const ctx = useContext(HabitContext)
-  if (!ctx) {
-    throw new Error('useHabits must be used inside <HabitProvider>')
-  }
+  if (!ctx) throw new Error('useHabits must be used inside <HabitProvider>')
   return ctx
 }

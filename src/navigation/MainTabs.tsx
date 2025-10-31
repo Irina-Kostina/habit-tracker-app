@@ -1,7 +1,6 @@
 import React from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { NavigationContainer } from '@react-navigation/native'
 import Home from '../screens/Home'
 import Tracker from '../screens/Tracker'
 import Stats from '../screens/Stats'
@@ -12,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons'
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
 
-// Tabs (your current 4 main screens)
+// Tabs (your main 3 screens)
 function Tabs() {
   return (
     <Tab.Navigator
@@ -49,7 +48,7 @@ export default function MainTabs() {
         options={{ headerShown: false }}
       />
 
-      {/* New ArticleDetails screen (opens when article tapped) */}
+      {/* Article details screen */}
       <Stack.Screen
         name="ArticleDetails"
         component={ArticleDetails}
