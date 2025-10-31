@@ -1,40 +1,23 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
+  Keyboard,
+  ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useHabits } from '../context/HabitContext'
 
-// Helper: generate all days for this month
-function getMonthDays() {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const today = now.getDate()
-
-  const arr = []
-  for (let i = 1; i <= daysInMonth; i++) {
-    arr.push({
-      day: i,
-      weekday: new Date(year, month, i)
-        .toLocaleDateString('en-US', { weekday: 'short' })
-        .slice(0, 3),
-      done: false,
-      today: i === today,
-    })
-  }
-  return arr
-}
-
-// Helper: get start (Monday) and end (Sunday) of current week
+// ---------- Helpers ----------
 function getCurrentWeekRange() {
   const today = new Date()
-  const dayOfWeek = today.getDay() // Sunday = 0 ... Saturday = 6
+  const dayOfWeek = today.getDay()
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
   const monday = new Date(today)
   monday.setDate(today.getDate() + mondayOffset)
@@ -47,21 +30,18 @@ function getCurrentWeekRange() {
       day: d.getDate(),
       weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3),
       done: false,
-      today:
-        d.toDateString() === today.toDateString(), // mark true only for today
+      today: d.toDateString() === today.toDateString(),
     })
   }
-
   return weekDays
 }
 
+// ---------- Component ----------
 export default function Tracker() {
-  const { habits: sharedHabits } = useHabits()
+  const { habits: sharedHabits, addHabit, deleteHabit } = useHabits()
 
-  // Get only current week days
   const currentWeekDays = useMemo(() => getCurrentWeekRange(), [])
 
-  // Attach week days to each habit
   const [habits, setHabits] = useState(() =>
     sharedHabits.map(h => ({
       ...h,
@@ -69,7 +49,17 @@ export default function Tracker() {
     }))
   )
 
-  // Toggle completion
+  // Modals
+  const [modalVisible, setModalVisible] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+
+  // Form fields
+  const [habitName, setHabitName] = useState('')
+  const [goal, setGoal] = useState('')
+  const [notes, setNotes] = useState('')
+  const [selectedHabit, setSelectedHabit] = useState<any>(null)
+
+  // ---------- Toggle habit completion ----------
   const toggleDay = (habitId: string, dayNumber: number) => {
     setHabits(prev =>
       prev.map(habit => {
@@ -84,7 +74,85 @@ export default function Tracker() {
     )
   }
 
-  // Header date
+  // ---------- Open Add / Edit ----------
+  const openAddModal = () => {
+    setHabitName('')
+    setGoal('')
+    setNotes('')
+    setSelectedHabit(null)
+    setIsEditing(false)
+    setModalVisible(true)
+  }
+
+  const openEditModal = (habit: any) => {
+    setHabitName(habit.name)
+    setGoal(habit.goal || '')
+    setNotes(habit.notes || '')
+    setSelectedHabit(habit)
+    setIsEditing(true)
+    setModalVisible(true)
+  }
+
+  // ---------- Add / Update / Delete ----------
+  const handleSave = () => {
+    const trimmed = habitName.trim()
+    if (!trimmed) {
+      Alert.alert('Please enter a habit name')
+      return
+    }
+
+    if (isEditing && selectedHabit) {
+      // Update existing habit
+      setHabits(prev =>
+        prev.map(h =>
+          h.id === selectedHabit.id
+            ? { ...h, name: trimmed, goal, notes }
+            : h
+        )
+      )
+      setModalVisible(false)
+      Keyboard.dismiss()
+      Alert.alert('Habit updated', `"${trimmed}" has been updated.`)
+    } else {
+      // Add new habit
+      const newHabit = {
+        id: Date.now().toString(),
+        name: trimmed,
+        goal,
+        notes,
+        days: JSON.parse(JSON.stringify(currentWeekDays)),
+        createdAt: new Date().toISOString(),
+      }
+
+      setHabits(prev => [...prev, newHabit])
+      addHabit && addHabit(newHabit)
+      setModalVisible(false)
+      Keyboard.dismiss()
+      Alert.alert('You created a new habit!', `"${trimmed}" has been added.`)
+    }
+
+    setHabitName('')
+    setGoal('')
+    setNotes('')
+  }
+
+  const handleDelete = () => {
+    if (!selectedHabit) return
+    Alert.alert('Delete Habit', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          setHabits(prev => prev.filter(h => h.id !== selectedHabit.id))
+          deleteHabit && deleteHabit(selectedHabit.id)
+          setModalVisible(false)
+        },
+      },
+    ])
+  }
+
+  // ---------- Header ----------
   const today = new Date()
   const formattedDate = today.toLocaleDateString('en-NZ', {
     weekday: 'long',
@@ -93,9 +161,10 @@ export default function Tracker() {
     year: 'numeric',
   })
 
+  // ---------- UI ----------
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.todayDate}>{formattedDate}</Text>
@@ -103,101 +172,141 @@ export default function Tracker() {
         </View>
 
         {/* Habit Cards */}
-        <FlatList
-          data={habits}
-          keyExtractor={item => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
+        {habits.map(item => (
+          <View key={item.id} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View>
                 <Text style={styles.habitName}>{item.name}</Text>
-                <Text style={styles.habitFreq}>This week</Text>
+                {item.goal ? (
+                  <Text style={styles.habitGoal}>Goal: {item.goal}</Text>
+                ) : null}
               </View>
 
-              {/* Only 7 days — current week */}
-              <FlatList
-                data={item.days}
-                keyExtractor={d => d.day.toString()}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingLeft: 12,
-                  paddingRight: 12,
-                }}
-                getItemLayout={(_, idx) => ({
-                  length: 50,
-                  offset: 50 * idx,
-                  index: idx,
-                })}
-                renderItem={({ item: d }) => (
-                  <View style={styles.dayColumn}>
-                    {/* Weekday label above */}
-                    <Text style={styles.dayLabel}>{d.weekday}</Text>
+              <TouchableOpacity onPress={() => openEditModal(item)}>
+                <Text style={styles.editText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
 
-                    <TouchableOpacity
-                      onPress={() => toggleDay(item.id, d.day)}
-                      activeOpacity={0.7}
+            {/* Week days */}
+            <FlatList
+              data={item.days}
+              keyExtractor={d => d.day.toString()}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 12 }}
+              renderItem={({ item: d }) => (
+                <View style={styles.dayColumn}>
+                  <Text style={styles.dayLabel}>{d.weekday}</Text>
+                  <TouchableOpacity
+                    onPress={() => toggleDay(item.id, d.day)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.circle,
+                        d.done
+                          ? styles.doneCircle
+                          : d.today
+                          ? styles.todayCircle
+                          : styles.defaultCircle,
+                      ]}
                     >
-                      <View
+                      <Text
                         style={[
-                          styles.circle,
+                          styles.dayNumber,
                           d.done
-                            ? styles.doneCircle
+                            ? { color: '#fff' }
                             : d.today
-                            ? styles.todayCircle
-                            : styles.defaultCircle,
+                            ? { color: '#000' }
+                            : { color: '#555' },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.dayNumber,
-                            d.done
-                              ? { color: '#fff' }
-                              : d.today
-                              ? { color: '#000' }
-                              : { color: '#555' },
-                          ]}
-                        >
-                          {d.day}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              />
-            </View>
-          )}
-        />
-      </View>
+                        {d.day}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+          </View>
+        ))}
+
+        {/* Add button */}
+        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+          <Text style={styles.addButtonText}>＋ Add Habit</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* ---------- Add/Edit Habit Modal ---------- */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <ScrollView
+            contentContainerStyle={[styles.modalBox, { paddingBottom: 40 }]}
+          >
+            <Text style={styles.modalTitle}>
+              {isEditing ? 'Edit Habit' : 'Create a new habit'}
+            </Text>
+
+            <Text style={styles.label}>Habit name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter habit name..."
+              placeholderTextColor="#9CA3AF"
+              value={habitName}
+              onChangeText={setHabitName}
+            />
+
+            <Text style={styles.label}>Goal / Frequency</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 20 min a day or 3 times a week"
+              placeholderTextColor="#9CA3AF"
+              value={goal}
+              onChangeText={setGoal}
+            />
+
+            <Text style={styles.label}>Notes / Comment</Text>
+            <TextInput
+              style={[styles.input, { height: 80 }]}
+              placeholder="Add any note or motivation..."
+              placeholderTextColor="#9CA3AF"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+            />
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Save Changes' : 'Add Habit'}
+              </Text>
+            </TouchableOpacity>
+
+            {isEditing && (
+              <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                <Text style={styles.deleteButtonText}>Delete Habit</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.closeModalButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeModalText}>Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
 
-// Styles
+// ---------- Styles ----------
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  header: {
-    marginTop: 10,
-    marginBottom: 25,
-  },
-  todayDate: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  motivation: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
-  },
+  safeArea: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { paddingHorizontal: 16, paddingBottom: 100 },
+  header: { marginTop: 10, marginBottom: 25 },
+  todayDate: { fontSize: 18, fontWeight: '700', color: '#000' },
+  motivation: { fontSize: 16, color: '#6B7280', marginTop: 4 },
 
   card: {
     backgroundColor: '#fff',
@@ -213,29 +322,15 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
     marginBottom: 12,
   },
-  habitName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  habitFreq: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-
-  dayColumn: {
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  dayLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 6,
-  },
+  habitName: { fontSize: 18, fontWeight: '700', color: '#000' },
+  habitGoal: { fontSize: 14, color: '#6B7280', marginTop: 2 },
+  editText: { fontSize: 14, color: '#3B82F6', fontWeight: '500' },
+  dayColumn: { alignItems: 'center', marginRight: 10 },
+  dayLabel: { fontSize: 12, color: '#9CA3AF', marginBottom: 6 },
   circle: {
     width: 44,
     height: 44,
@@ -243,19 +338,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  defaultCircle: {
-    backgroundColor: '#E5E7EB',
-  },
-  doneCircle: {
+  defaultCircle: { backgroundColor: '#E5E7EB' },
+  doneCircle: { backgroundColor: '#000' },
+  todayCircle: { backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#000' },
+  dayNumber: { fontSize: 14, fontWeight: '600' },
+
+  addButton: {
+    alignSelf: 'center',
     backgroundColor: '#000',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 10,
   },
-  todayCircle: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 2,
-    borderColor: '#000',
+  addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  dayNumber: {
-    fontSize: 14,
+  modalBox: {
+    backgroundColor: '#fff',
+    width: '85%',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20 },
+  label: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#111827',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    width: '100%',
+  },
+  saveButton: {
+    backgroundColor: '#000',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+    width: '100%',
+  },
+  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  deleteButtonText: { color: '#fff', fontWeight: '600' },
+  closeModalButton: { marginTop: 10 },
+  closeModalText: { color: '#3B82F6', fontSize: 14 },
 })
